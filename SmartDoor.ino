@@ -1,13 +1,13 @@
 #include <util/delay.h> 
 
-int LED [] = {8,9,10};                // Pin 8 Electromagnetic Lock
-                                      // Pin 9 Sensor 1
-                                      // Pin 10 Sensor 2
-int BUTTON [] = {0,3,4,5};            // Pin 5 used as switch to control electromagnetic lock
-                                      // Pin 3 used to control sensor 1
-                                      // Pin 4 used to control sensor 2
-                                      // Button[0] used as manual call point, interrupt 0 is located on Pin 2                                    
-        
+int LED [] = {8,9,10};                // LED[0] Pin 8 Electromagnetic Lock
+                                      // LED[1] Pin 9 Sensor 1
+                                      // LED[2] Pin 10 Sensor 2
+int BUTTON [] = {0,3,4,5};            // Button[0] Pin 2 used as manual call point, interrupt 0 is located on Pin 2
+                                      // Button[1] Pin 3 used to control sensor 2
+                                      // Button[2] Pin 3 used to control sensor 1
+                                      // Button[3] Pin 5 used as door release button
+                                      
 int val [] = {0,0};                   // val to be used to store the state of input pin (BUTTON)
 int old_val [] = {0,0};               // stores the previous value of "val"
 int LEDstate [] = {0,0};              // 0 = LED OFF and 1 = LED ON       
@@ -69,9 +69,11 @@ void override_delay(){
 }
 
 void read_buttons(){
+  // Read Push Buttons for Sensors
+  val[0] = digitalRead(BUTTON[2]);
+  val[1] = digitalRead(BUTTON[1]);
+  
   for (int i = 0; i < 2; i++){
-    val[i] = digitalRead(BUTTON[i+1]);      // Read Push Button
-    
     // Check if there was a transition
     if ((val[i] == HIGH) && (old_val[i] == LOW)){
       LEDstate[i] = 1 - LEDstate[i];
