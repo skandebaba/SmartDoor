@@ -1,29 +1,33 @@
 #include <util/delay.h> 
 
-int LED [] = {8,9,10};                // LED[0] Pin 8 Electromagnetic Lock
-                                      // LED[1] Pin 9 Sensor 1
-                                      // LED[2] Pin 10 Sensor 2
-int BUTTON [] = {0,3,4,5};            // Button[0] Pin 2 used as manual call point, interrupt 0 is located on Pin 2
-                                      // Button[1] Pin 3 used to control sensor 2
-                                      // Button[2] Pin 3 used to control sensor 1
-                                      // Button[3] Pin 5 used as door release button
+volatile int LED [] = {8,9};          // Pin 8 Electromagnetic Lock
+                                      // Pin 9 Sensor 1
+                                      // Pin 10 Sensor 2
+int BUTTON [] = {0,5};                // Button[0] used as manual call point, interrupt 0 is located on Pin 2
+                                      // Pin 5 used as switch to control electromagnetic lock
+                                             
                                       
+int Smoke_Sensor = 3;                 // Pin 3 used for Smoke Sensor (MQ-2)
+        
 int val [] = {0,0};                   // val to be used to store the state of input pin (BUTTON)
 int old_val [] = {0,0};               // stores the previous value of "val"
 int LEDstate [] = {0,0};              // 0 = LED OFF and 1 = LED ON       
 
-boolean Temp_Sensor = false;          // Set Reading of Sensors as FALSE (No Reading)
-boolean Smoke_Sensor = false;              
+// boolean Temp_Sensor = false;          // Set Reading of Sensors as FALSE (No Reading)
+boolean Smoke_Sensor_Operating = false;              
 boolean Sensors_Working = false;          
-int Emergency_Switch_Operated = 0;    // Set Emergency Switch as FALSE (Not Pressed)
+int Switch_Operated = false;    // Set Emergency Switch as FALSE (Not Pressed)
 
-// The Setup Routine executes once when reset is pressed
+// The Setup Routine executes once when reset is pressed/arduino powered for first time
 void setup(){
-  for (int i = 0; i < 4; i++){
+  for (int i = 0; i < 2; i++){
     pinMode(BUTTON[i], INPUT);
     digitalWrite(BUTTON[i], HIGH);     // Turn on internal Pull-Up Resistor
     pinMode(LED[i], OUTPUT);           
   }
+  
+  pinMode(Smoke_Sensor, INPUT);
+//  digitalWrite(Smoke_Sensor, LOW);
   
   //Attach the interrupt to the input pin and monitor for ANY Change
   attachInterrupt(BUTTON[0], override_delay, CHANGE);
@@ -31,18 +35,17 @@ void setup(){
 
 // The Loop Routine executes over and over again
 void loop(){
-  read_buttons();
   check_sensors();
   
   // Reads State of Emergency_Switch
-  Emergency_Switch_Operated = digitalRead(BUTTON[3]);
+  Switch_Operated = digitalRead(BUTTON[1]);
   
   // If sensors AREN'T working and emergency switch is operated
   // the electromagnet should unlock instantaneously, else
   // if the sensors are working and switch is operated delay occurs before unlocking
   if (Sensors_Working == false){
     // Checks whether Emergency Switch Operated
-    if (Emergency_Switch_Operated == LOW){
+    if (Switch_Operated == LOW){
       digitalWrite(LED[0], HIGH);
     }
     else {
@@ -51,7 +54,7 @@ void loop(){
     }
   } else
   {
-    if (Emergency_Switch_Operated == LOW){
+    if (Switch_Operated == LOW){
       digitalWrite(LED[0], HIGH);
     }
     else {
@@ -68,44 +71,18 @@ void override_delay(){
   delay_ms(2000);
 }
 
-void read_buttons(){
-  // Read Push Buttons for Sensors
-  val[0] = digitalRead(BUTTON[2]);
-  val[1] = digitalRead(BUTTON[1]);
-  
-  for (int i = 0; i < 2; i++){
-    // Check if there was a transition
-    if ((val[i] == HIGH) && (old_val[i] == LOW)){
-      LEDstate[i] = 1 - LEDstate[i];
-      delay(10);
-    }
-    old_val[i] = val[i];    // val is now old, let's store it  
-  }
-
-  if (LEDstate[0] == 0){
-    digitalWrite(LED[1], HIGH); // Turn LED ON
-    Smoke_Sensor = false; // Set Smoke Sensor as NOT working
-  } else{
-    digitalWrite(LED[1], LOW); // Turn LED OFF
-    Smoke_Sensor = true; // Set Smoke Sensor as working
-  }  
-  
-  if (LEDstate[1] == 0){
-    digitalWrite(LED[2], HIGH); // Turn LED ON
-    Temp_Sensor = false; // Set Smoke Sensor as NOT working
-  } else{
-    digitalWrite(LED[2], LOW); // Turn LED OFF
-    Temp_Sensor = true; // Set Smoke Sensor as working
-  }
-}
-
 void check_sensors(){
-   // Checks Whether Sensors are working
-  if (Temp_Sensor == true && Smoke_Sensor == true){
+  Smoke_Sensor_Operating = digitalRead(Smoke_Sensor);
+
+  // Checks Whether Sensors are working
+  if (Smoke_Sensor_Operating == true){
     Sensors_Working = true;
+    digitalWrite(LED[1], LOW);
   }
-  else {
+  else if (Smoke_Sensor_Operating == false){
     Sensors_Working = false;
+    Smoke_Sensor_Operating = false;
+    digitalWrite(LED[1], HIGH);
   }
 }
 
