@@ -7,11 +7,7 @@ int BUTTON [] = {0,5};                // Button[0] used as manual call point, in
                                       // Pin 5 used as switch to control electromagnetic lock
                                              
                                       
-int Smoke_Sensor = 3;                 // Pin 3 used for Smoke Sensor (MQ-2)
-        
-int val [] = {0,0};                   // val to be used to store the state of input pin (BUTTON)
-int old_val [] = {0,0};               // stores the previous value of "val"
-int LEDstate [] = {0,0};              // 0 = LED OFF and 1 = LED ON       
+int Smoke_Sensor = 3;                 // Pin 3 used for Smoke Sensor (MQ-2)  
 
 // boolean Temp_Sensor = false;          // Set Reading of Sensors as FALSE (No Reading)
 boolean Smoke_Sensor_Operating = false;              
