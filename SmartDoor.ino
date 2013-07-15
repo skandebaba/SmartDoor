@@ -1,18 +1,18 @@
 #include <util/delay.h> 
 
-volatile int LED [] = {8,9};          // Pin 8 Electromagnetic Lock
+volatile unsigned char LED [] = {8,9};          // Pin 8 Electromagnetic Lock
                                       // Pin 9 Sensor 1
                                       // Pin 10 Sensor 2
-int BUTTON [] = {0,5};                // Button[0] used as manual call point, interrupt 0 is located on Pin 2
+unsigned char BUTTON [] = {0,5};                // Button[0] used as manual call point, interrupt 0 is located on Pin 2
                                       // Pin 5 used as switch to control electromagnetic lock
                                              
                                       
-int Smoke_Sensor = 3;                 // Pin 3 used for Smoke Sensor (MQ-2)  
+unsigned char Smoke_Sensor = 3;                 // Pin 3 used for Smoke Sensor (MQ-2)  
 
 // boolean Temp_Sensor = false;          // Set Reading of Sensors as FALSE (No Reading)
 boolean Smoke_Sensor_Operating = false;              
 boolean Sensors_Working = false;          
-int Switch_Operated = false;    // Set Emergency Switch as FALSE (Not Pressed)
+boolean Switch_Operated = false;    // Set Emergency Switch as FALSE (Not Pressed)
 
 // The Setup Routine executes once when reset is pressed/arduino powered for first time
 void setup(){
