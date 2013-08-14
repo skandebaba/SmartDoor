@@ -1,12 +1,12 @@
 #include <util/delay.h> 
 
 volatile unsigned char LED [] = {8,9};          // Pin 8 Electromagnetic Lock
-                                      // Pin 9 Sensor 1
-                                      // Pin 10 Sensor 2
+                                                // Pin 9 Warning LED
+volatile unsigned char Relay = 8;               // Relay is connected to pin 8
+
 unsigned char BUTTON [] = {0,5};                // Button[0] used as manual call point, interrupt 0 is located on Pin 2
-                                      // Pin 5 used as switch to control electromagnetic lock
-                                             
-                                      
+                                                // Pin 5 used as switch to control electromagnetic lock
+                                                                            
 unsigned char Smoke_Sensor = 3;                 // Pin 3 used for Smoke Sensor (MQ-2)  
 
 // boolean Temp_Sensor = false;          // Set Reading of Sensors as FALSE (No Reading)
@@ -14,14 +14,18 @@ boolean Smoke_Sensor_Operating = false;
 boolean Sensors_Working = false;          
 boolean Switch_Operated = false;    // Set Emergency Switch as FALSE (Not Pressed)
 
-// The Setup Routine executes once when reset is pressed/arduino powered for first time
+// ===========================================================================================
+// Setup Routine - Executes only once when reset it pressed/arduino powered for first time
+// ===========================================================================================
+
 void setup(){
   for (int i = 0; i < 2; i++){
     pinMode(BUTTON[i], INPUT);
-    digitalWrite(BUTTON[i], HIGH);     // Turn on internal Pull-Up Resistor
-    pinMode(LED[i], OUTPUT);           
+    digitalWrite(BUTTON[i], HIGH);     // Turn on internal Pull-Up Resistor          
   }
   
+  pinMode(LED[1], OUTPUT);
+  pinMode(Relay, OUTPUT);
   pinMode(Smoke_Sensor, INPUT);
 //  digitalWrite(Smoke_Sensor, LOW);
   
@@ -29,7 +33,10 @@ void setup(){
   attachInterrupt(BUTTON[0], override_delay, CHANGE);
 }
 
-// The Loop Routine executes over and over again
+// ===========================================================================================
+// Main Program
+// ===========================================================================================
+
 void loop(){
   check_sensors();
   
@@ -42,30 +49,40 @@ void loop(){
   if (Sensors_Working == false){
     // Checks whether Emergency Switch Operated
     if (Switch_Operated == LOW){
-      digitalWrite(LED[0], HIGH);
+      digitalWrite(Relay, LOW);
     }
-    else {
-      digitalWrite(LED[0], LOW);
+    else{
+      digitalWrite(Relay, HIGH);
+      digitalWrite(LED[1], LOW);
       delay_ms(2000);
     }
-  } else
+  } 
+  else
   {
     if (Switch_Operated == LOW){
-      digitalWrite(LED[0], HIGH);
+      digitalWrite(Relay, LOW);
     }
     else {
       delay_ms(3000);
-      digitalWrite(LED[0], LOW);
+      digitalWrite(Relay, HIGH);
       delay_ms(2000);
     }
   }
 }
 
-// Execute this code when external interrupt 0 is activated
+// ===========================================================================================
+// Interrupt Code
+// ===========================================================================================
+
+// Execute this code when external interrupt 0 is activated i.e. Manual Call Point
 void override_delay(){
-  digitalWrite(LED[0],LOW);
+  digitalWrite(Relay,HIGH);
   delay_ms(2000);
 }
+
+// ===========================================================================================
+// Code to check whether sensor(s) are working
+// ===========================================================================================
 
 void check_sensors(){
   Smoke_Sensor_Operating = digitalRead(Smoke_Sensor);
@@ -81,6 +98,10 @@ void check_sensors(){
     digitalWrite(LED[1], HIGH);
   }
 }
+
+// ===========================================================================================
+// Delay function
+// ===========================================================================================
 
 void delay_ms(unsigned int time) 
 { 
