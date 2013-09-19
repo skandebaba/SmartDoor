@@ -8,7 +8,7 @@ int x_limit = 800;
 int y_limit = 800;
 int z_limit = 800;
 
-int led = 10;
+int led = 9;
 
 int init_flag = 0;
 
