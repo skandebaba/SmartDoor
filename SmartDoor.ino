@@ -14,7 +14,7 @@ boolean         Man_Switch_Operated   = false;        // Set Emergency Switch as
 
 volatile char lock       = ElectroLock;
 volatile char MCP        = ManualCallPoint;
-volatile char man_flag   = 0;
+volatile char man_flag   = 0;                  
 volatile char smoke_flag = 0;
 
 // ===========================================================================================
@@ -138,4 +138,3 @@ void delay_ms(unsigned int time)
   while (time--) 
     _delay_ms(1); 
 }
-
