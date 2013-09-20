@@ -8,7 +8,7 @@
 #define  SmokeSensor      1      // Connected to Interrupt 1, interrupt 0 is located on Pin 3
 #define  DelayTime        3000   // Specify the delay time in milliseconds (Maximum = 15000), before electromagnetic lock unlocks
 #define  UnlockTime       2000   // Specify the time(ms) the electromagnetic lock is unlocked for, before it locks again
-#define  FlashLED         5      // LED will flash every 2 seconds
+#define  FlashLED         5      // LED will flash every 5 seconds
 
 unsigned char   Smoke_Sensor          = SmokeSensor;  // Interrupt 1 located on Pin 3, which is used for Smoke Sensor (MQ-2)
 unsigned char   seconds               = 0;
@@ -64,7 +64,6 @@ void setup(){
    *  Initialize timer 1
    *  Set interrupt to occur every 2Hz (0.5s)
    */
-    cli();          // disable global interrupts
     TCCR1A = 0;     // set entire TCCR1A register to 0
     TCCR1B = 0;     // same for TCCR1B
  
@@ -78,9 +77,7 @@ void setup(){
     // enable timer compare interrupt:
     TIMSK1 |= (1 << OCIE1A);
     // enable global interrupts:
-    sei();
-  
-  
+    
   sei();  // Enable global interrupts
 
   // Enable the watchdog timer
@@ -143,8 +140,9 @@ ISR(TIMER0_COMPA_vect){
 // Toggles pin 8 (WarningLED)
 ISR(TIMER1_COMPA_vect){
 //generates pulse wave of frequency 2Hz/2 = 1Hz (takes two cycles for full wave- toggle high then toggle low)
+  wdt_reset(); 
   seconds++;
-    if (seconds == FlashLED)
+    if (man_flag == 0 && smoke_flag == 0 && seconds == FlashLED)
     {
         seconds = 0;
         if (toggle){
