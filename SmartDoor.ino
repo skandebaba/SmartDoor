@@ -40,22 +40,24 @@ void setup(){
   // Attach Interrupts to their respective functions
   attachInterrupt(Smoke_Sensor, smoke_override_delay, LOW);    // LOW to trigger the interrupt whenever the pin is low
   
-  cli();//stop interrupts
-
-//set timer0 interrupt at 2kHz
-  TCCR0A = 0;// set entire TCCR2A register to 0
-  TCCR0B = 0;// same for TCCR2B
-  TCNT0  = 0;//initialize counter value to 0
-  // set compare match register for 2khz increments
-  OCR0A = 124;// = (16*10^6) / (2000*64) - 1 (must be <256)
-  // turn on CTC mode
-  TCCR0A |= (1 << WGM01);
-  // Set CS01 and CS00 bits for 64 prescaler
-  TCCR0B |= (1 << CS01) | (1 << CS00);   
-  // enable timer compare interrupt
+  /*
+   *  Initialize timer 0
+   *  Set interrupt to occur every 100Hz (10ms)
+   */
+  cli();       // Stop interrupts
+  TCCR0A = 0;  // Set entire TCCR2A register to 0
+  TCCR0B = 0;  // Same for TCCR2B
+  TCNT0  = 0;  // Initialize counter value to 0
+  
+  // Set compare match register for 100Hz increments
+  OCR0A   = 156;// = (16*10^6) / (100*1024) - 1 (must be < 256)
+  TCCR0A |= (1 << WGM01);  // Turn on CTC mode
+  // Set CS00 and CS02 bits for 1024 prescaler
+  TCCR0B |= (1 << CS00 | 1 << CS02);
+  // Enable timer compare interrupt
   TIMSK0 |= (1 << OCIE0A);
-
-  sei();//allow interrupts
+  
+  sei();  // Enable global interrupts
 
   // Enable the watchdog timer
   wdt_enable(WDTO_500MS);
@@ -101,11 +103,11 @@ void loop(){
 // Interrupt Code
 // ===========================================================================================
 
-// Timer0 interrupt 2kHz 
+// Timer0 interrupt 100Hz 
 // Reset watchdog timer & read Manual Call Point
 ISR(TIMER0_COMPA_vect){
   wdt_reset(); 
-// Generates pulse wave of frequency 2kHz/2 = 1kHz (takes two cycles for full wave- toggle high then toggle low)
+// Generates pulse wave of frequency 100/2 = 50Hz (takes two cycles for full wave- toggle high then toggle low)
   if (digitalRead(MCP))
   {
     man_flag = 1;
