@@ -7,11 +7,14 @@
 #define  ManualCallPoint  2      // Manual Call Point connected to Pin 2
 #define  SmokeSensor      1      // Connected to Interrupt 1, interrupt 0 is located on Pin 3
 #define  DelayTime        3000   // Specify the delay time in milliseconds (Maximum = 15000), before electromagnetic lock unlocks
-#define  UnlockTime       2000   // Specify the time(ms) the electromagnetic lock is unlocked for, before it locks again 
+#define  UnlockTime       2000   // Specify the time(ms) the electromagnetic lock is unlocked for, before it locks again
+#define  FlashLED         5      // LED will flash every 2 seconds
 
-unsigned char   Smoke_Sensor          = SmokeSensor;  // Interrupt 1 located on Pin 3, which is used for Smoke Sensor (MQ-2)      
+unsigned char   Smoke_Sensor          = SmokeSensor;  // Interrupt 1 located on Pin 3, which is used for Smoke Sensor (MQ-2)
+unsigned char   seconds               = 0;
 boolean         Exit_Switch_Operated  = false;        // Set Emergency Switch as FALSE (Not Pressed)
 boolean         Man_Switch_Operated   = false;        // Set Emergency Switch as FALSE (Not Pressed)
+boolean         toggle                = 0;
 
 volatile char lock       = ElectroLock;
 volatile char MCP        = ManualCallPoint;
@@ -50,12 +53,33 @@ void setup(){
   TCNT0  = 0;  // Initialize counter value to 0
   
   // Set compare match register for 100Hz increments
-  OCR0A   = 156;// = (16*10^6) / (100*1024) - 1 (must be < 256)
+  OCR0A   = 156;  // = (16*10^6) / (100*1024) - 1 (must be < 256)
   TCCR0A |= (1 << WGM01);  // Turn on CTC mode
   // Set CS00 and CS02 bits for 1024 prescaler
   TCCR0B |= (1 << CS00 | 1 << CS02);
   // Enable timer compare interrupt
   TIMSK0 |= (1 << OCIE0A);
+  
+  /*
+   *  Initialize timer 1
+   *  Set interrupt to occur every 2Hz (0.5s)
+   */
+    cli();          // disable global interrupts
+    TCCR1A = 0;     // set entire TCCR1A register to 0
+    TCCR1B = 0;     // same for TCCR1B
+ 
+    // set compare match register to desired timer count:
+    OCR1A = 7811;  // = (16*10^6) / (100*1024) - 1 (must be < 65536)
+    // turn on CTC mode:
+    TCCR1B |= (1 << WGM12);
+    // Set CS10 and CS12 bits for 1024 prescaler:
+    TCCR1B |= (1 << CS10);
+    TCCR1B |= (1 << CS12);
+    // enable timer compare interrupt:
+    TIMSK1 |= (1 << OCIE1A);
+    // enable global interrupts:
+    sei();
+  
   
   sei();  // Enable global interrupts
 
@@ -113,6 +137,26 @@ ISR(TIMER0_COMPA_vect){
     man_flag = 1;
     digitalWrite(lock, HIGH);
   }
+}
+
+// Timer1 interrupt 2Hz 
+// Toggles pin 8 (WarningLED)
+ISR(TIMER1_COMPA_vect){
+//generates pulse wave of frequency 2Hz/2 = 1Hz (takes two cycles for full wave- toggle high then toggle low)
+  seconds++;
+    if (seconds == FlashLED)
+    {
+        seconds = 0;
+        if (toggle){
+          digitalWrite(WarningLED,HIGH);
+          toggle = 0;
+        }
+        else{
+          digitalWrite(WarningLED,LOW);
+          toggle = 1;
+        }
+    }
+    
 }
 
 // Execute this code when external interrupt 1 is activated i.e. Smoke Sensor
