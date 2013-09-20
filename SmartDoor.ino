@@ -1,4 +1,5 @@
 #include <util/delay.h> 
+#include <avr/wdt.h>
 
 #define  ElectroLock      8      // Relay Controlling Electromagnetic Lock connected to Pin 8
 #define  WarningLED       9      // Warning LED connected to Pin 9
@@ -30,7 +31,7 @@ void setup(){
   // Turn on internal Pull-Up Resistor
   digitalWrite(ManualCallPoint, HIGH);    
   digitalWrite(PressToExit, HIGH);
-  //pinMode(Smoke_Sensor, HIGH); 
+  pinMode(Smoke_Sensor, HIGH); 
   
   // Configure as outputs
   pinMode(ElectroLock, OUTPUT);
@@ -54,7 +55,10 @@ void setup(){
   // enable timer compare interrupt
   TIMSK0 |= (1 << OCIE0A);
 
-sei();//allow interrupts
+  sei();//allow interrupts
+
+  // Enable the watchdog timer
+  wdt_enable(WDTO_500MS);
 }
 
 // ===========================================================================================
@@ -79,23 +83,29 @@ void loop(){
      }
   }
   
-  if (man_flag == 1){
+  if (man_flag == 1)
+  {
       digitalWrite(ElectroLock, HIGH);
       led_flash();
    }
-  if (smoke_flag == 1)
+   
+   if (smoke_flag == 1)
    {
      digitalWrite(ElectroLock, HIGH);
      led_flash2();
    }
+   
 }
 
 // ===========================================================================================
 // Interrupt Code
 // ===========================================================================================
 
-ISR(TIMER0_COMPA_vect){//timer0 interrupt 2kHz toggles pin 8
-//generates pulse wave of frequency 2kHz/2 = 1kHz (takes two cycles for full wave- toggle high then toggle low)
+// Timer0 interrupt 2kHz 
+// Reset watchdog timer & read Manual Call Point
+ISR(TIMER0_COMPA_vect){
+  wdt_reset(); 
+// Generates pulse wave of frequency 2kHz/2 = 1kHz (takes two cycles for full wave- toggle high then toggle low)
   if (digitalRead(MCP))
   {
     man_flag = 1;
@@ -105,6 +115,7 @@ ISR(TIMER0_COMPA_vect){//timer0 interrupt 2kHz toggles pin 8
 
 // Execute this code when external interrupt 1 is activated i.e. Smoke Sensor
 void smoke_override_delay(){
+  wdt_reset(); 
   smoke_flag = 1;
   digitalWrite(lock, HIGH);
 }
