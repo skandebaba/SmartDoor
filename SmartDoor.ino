@@ -9,12 +9,33 @@
 #define  DelayTime        3000   // Specify the delay time in milliseconds (Maximum = 15000), before electromagnetic lock unlocks
 #define  UnlockTime       2000   // Specify the time(ms) the electromagnetic lock is unlocked for, before it locks again
 #define  FlashLED         5      // LED will flash every 5 seconds
+#define  X_AXIS           A0     // X-Axis of ADXL335 connected to A0
+#define  Y_AXIS           A1     // Y-Axis of ADXL335 connected to A1
+#define  Z_AXIS           A2     // Z-Axis of ADXL335 connected to A2
 
-unsigned char   Smoke_Sensor          = SmokeSensor;  // Interrupt 1 located on Pin 3, which is used for Smoke Sensor (MQ-2)
-unsigned char   seconds               = 0;
-boolean         Exit_Switch_Operated  = false;        // Set Emergency Switch as FALSE (Not Pressed)
-boolean         Man_Switch_Operated   = false;        // Set Emergency Switch as FALSE (Not Pressed)
-boolean         toggle                = 0;
+unsigned char   Smoke_Sensor            = SmokeSensor;  // Interrupt 1 located on Pin 3, which is used for Smoke Sensor (MQ-2)
+unsigned char   seconds                 = 0;
+boolean         Exit_Switch_Operated    = false;        // Set Press-To-Exit as FALSE (Not Pressed)
+boolean         Man_Switch_Operated     = false;        // Set Manual Call Point as FALSE (Not Pressed)
+boolean         toggle                  = 0;
+int             x,y,z                   = 0;            // Variables to store readings from ADXL335
+
+// Variables used to store threshold values for each axis
+int x_low_thres, x_up_thres;
+int y_low_thres, y_up_thres;
+int z_low_thres, z_up_thres;
+
+// Limits for ADXL335, if above these values then something wrong with ADXL335
+int x_limit = 800;
+int y_limit = 800;
+int z_limit = 800;
+
+// Flags used for ADXL335
+char   init_flag  = 0;    // Used to make sure thresholding is only done once
+char   quake_flag = 0;
+
+// Simply change this value to change threshold of ADXL335
+char threshold = 2;
 
 volatile char lock       = ElectroLock;
 volatile char MCP        = ManualCallPoint;
@@ -30,11 +51,17 @@ void setup(){
   pinMode(ManualCallPoint, INPUT);
   pinMode(PressToExit, INPUT);
   pinMode(Smoke_Sensor, INPUT);
+  pinMode(X_AXIS, INPUT);
+  pinMode(Y_AXIS, INPUT);
+  pinMode(Z_AXIS, INPUT);
   
   // Turn on internal Pull-Up Resistor
   digitalWrite(ManualCallPoint, HIGH);    
   digitalWrite(PressToExit, HIGH);
-  pinMode(Smoke_Sensor, HIGH); 
+  digitalWrite(X_AXIS, HIGH);  // set pullup on analog pin 0 
+  digitalWrite(Y_AXIS, HIGH);  // set pullup on analog pin 1
+  digitalWrite(Z_AXIS, HIGH);  // set pullup on analog pin 2
+  pinMode(Smoke_Sensor, HIGH);
   
   // Configure as outputs
   pinMode(ElectroLock, OUTPUT);
@@ -89,8 +116,24 @@ void setup(){
 // ===========================================================================================
 
 void loop(){
+  delay_ms(100);
+  read_accel();
+  // Set upper and lower threshold values for x-axis, y-axis, z-axis
+  if(init_flag == 0){
+    x_low_thres = x - threshold;
+    x_up_thres = x + threshold;
+    
+    y_low_thres = y - threshold;
+    y_up_thres = y + threshold;
+    
+    z_low_thres = z - threshold;
+    z_up_thres = z + threshold;
+    
+    init_flag++;
+  }
+  
   // Check whether manual call point or smoke sensor flag is set
-  if(man_flag == 0 && smoke_flag == 0)
+  if(man_flag == 0 && smoke_flag == 0 && quake_flag == 0)
   {
     Exit_Switch_Operated = digitalRead(PressToExit);
     delay_ms(50);      // Used for debouncing of switch
@@ -100,22 +143,57 @@ void loop(){
         digitalWrite(WarningLED, LOW);
      }
      else{
-        delay_ms(DelayTime);      // Specifies the time before the door unlocks
+        delay_ms(DelayTime);            // Specifies the time before the door unlocks
         digitalWrite(ElectroLock, HIGH);
         delay_ms(UnlockTime);           // Specifies the time before the door locks again
      }
+     
+      // Check whether sensor readings above limit specified
+      if (x < x_limit & y < y_limit & z < z_limit)
+      {
+        // Check whether a tap occured or whether activity is taking place
+        if ((x < x_low_thres) || (x > x_up_thres) || (y < y_low_thres) || (y > y_up_thres) || (z < z_low_thres) || (z > z_up_thres))
+        {
+          delay_ms(250);   // This delay is used to see if a tap occured
+          read_accel();
+      
+          // This code will execute only if there is activity
+          if ((x < x_low_thres) || (x > x_up_thres) || (y < y_low_thres) || (y > y_up_thres) || (z < z_low_thres) || (z > z_up_thres))
+          {  
+            quake_flag = 1;
+          }
+        }
+      }
+      else{
+        quake_flag = 1;
+      }
   }
   
   if (man_flag == 1)
   {
+    for(;;)
+    {
       digitalWrite(ElectroLock, HIGH);
       led_flash();
+    }
    }
    
    if (smoke_flag == 1)
    {
-     digitalWrite(ElectroLock, HIGH);
-     led_flash2();
+     for(;;)
+     {
+       digitalWrite(ElectroLock, HIGH);
+       led_flash2();
+     }
+   }
+   
+   if (quake_flag == 1)
+   {
+     for(;;)
+     {
+       digitalWrite(ElectroLock, HIGH);
+       led_flash3();
+     }
    }
    
 }
@@ -132,7 +210,7 @@ ISR(TIMER0_COMPA_vect){
   if (digitalRead(MCP))
   {
     man_flag = 1;
-    digitalWrite(lock, HIGH);
+    digitalWrite(ElectroLock, HIGH);
   }
 }
 
@@ -142,7 +220,7 @@ ISR(TIMER1_COMPA_vect){
 //generates pulse wave of frequency 2Hz/2 = 1Hz (takes two cycles for full wave- toggle high then toggle low)
   wdt_reset(); 
   seconds++;
-    if (man_flag == 0 && smoke_flag == 0 && seconds == FlashLED)
+    if (man_flag == 0 && smoke_flag == 0 && quake_flag == 0 && seconds == FlashLED)
     {
         seconds = 0;
         if (toggle){
@@ -154,14 +232,13 @@ ISR(TIMER1_COMPA_vect){
           toggle = 1;
         }
     }
-    
 }
 
 // Execute this code when external interrupt 1 is activated i.e. Smoke Sensor
 void smoke_override_delay(){
   wdt_reset(); 
   smoke_flag = 1;
-  digitalWrite(lock, HIGH);
+  digitalWrite(ElectroLock, HIGH);
 }
 
 // ===========================================================================================
@@ -182,6 +259,27 @@ void led_flash2()
   delay_ms(1000);
   digitalWrite(WarningLED, LOW);
   delay_ms(2000);
+}
+
+void led_flash3()
+{
+  digitalWrite(WarningLED, HIGH);
+  delay_ms(2000);
+  digitalWrite(WarningLED, LOW);
+  delay_ms(2000);
+}
+
+// ===========================================================================================
+// Read Accelerometer (ADXL335)
+// ===========================================================================================
+
+void read_accel(){
+  x = analogRead(X_AXIS);       // read analog input pin 0
+  delay_ms(1);
+  y = analogRead(Y_AXIS);       // read analog input pin 1
+  delay_ms(1);
+  z = analogRead(Z_AXIS);       // read analog input pin 1
+  delay_ms(1);
 }
 
 // ===========================================================================================
