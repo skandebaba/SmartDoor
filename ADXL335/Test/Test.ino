@@ -1,3 +1,11 @@
+/*
+ *	Code to test ADXL335 Accelerometer
+ *
+ *	Get initial value from each axis and use that as reference point
+ *	a threshold is set +-2 about the threshold value
+ *	If value read goes above or below threshold, LED turns on
+ */
+
 int x,y,z;
 
 int x_low_thres, x_up_thres;
@@ -30,7 +38,7 @@ void setup()
 
 void loop()
 {
-    delay(100);
+    delay(250);		// 250ms delay, this is to ignore just vibrations such as tapping
     read_accel();
 
 // Set upper and lower threshold values for x-axis, y-axis, z-axis
