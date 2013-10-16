@@ -1,0 +1,4 @@
+The master sends data to the slave that reads it
+
+Typing 'H' in Serial monitor will turn LED13 on slave device ON
+Typing 'L' in Serial monitor will turn LED13 on slave device OFF
